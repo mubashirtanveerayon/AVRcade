@@ -1,0 +1,292 @@
+ATMEGA32A HANDHELD - COMPLETE 3.3 V WIRING
+============================================================
+
+This is the finalized wiring for the ATmega32A, SSD1309 OLED,
+SD card, MPU-6050, joystick, four game buttons (A, X, Y, B),
+pause button (INT1), reset button, passive buzzer, bootloader status
+LED and USBasp.
+
+The ATmega32A uses its internal 8 MHz oscillator. No external
+crystal is connected.
+
+
+1. ATMEGA32A ORIENTATION
+------------------------------------------------------------
+
+Use the 40-pin DIP ATmega32A with the notch facing upward.
+
+Pin 1 is at the upper-left. Pins 1 through 20 run downward on
+the left side. Pins 21 through 40 run upward on the right side.
+
+
+3. CURRENTLY INSTALLED CAPACITORS
+------------------------------------------------------------
+
+10 uF electrolytic across the main breadboard rails:
+
+    positive leg       -> 3.3 V rail
+    striped negative   -> GND rail
+
+10 uF electrolytic across SD VCC and GND:
+
+    positive leg       -> SD VCC
+    striped negative   -> SD GND
+
+100 nF ceramic on AREF:
+
+    ATmega32A pin 32 (AREF) -> 100 nF -> GND rail
+
+
+100 nF ceramic directly between pins 10 and 11
+100 nF ceramic directly between pins 30 and 31
+
+The 100 nF ceramic capacitor has no polarity.
+
+Do not connect AREF pin 32 directly to 3.3 V. The software uses
+AVCC as the ADC reference.
+
+4. RESET AND USBASP
+------------------------------------------------------------
+
+Installed RESET pull-up resistor:
+
+    3.3 V -> 12 kOhm resistor -> ATmega32A pin 9 (RESET)
+
+
+
+USBasp connections:
+
+    USBasp VCC   -> 3.3 V rail
+    USBasp GND   -> common GND rail
+    USBasp MOSI  -> PB5, physical pin 6
+    USBasp MISO  -> PB6, physical pin 7
+    USBasp SCK   -> PB7, physical pin 8
+    USBasp RESET -> RESET, physical pin 9
+
+Do not connect a capacitor from RESET to GND because it can
+interfere with USBasp programming.
+
+
+5. SHARED HARDWARE SPI BUS
+------------------------------------------------------------
+
+PB5, physical pin 6 -> OLED SDA and SD MOSI
+PB6, physical pin 7 -> SD MISO and USBasp MISO
+PB7, physical pin 8 -> OLED SCK and SD CLK
+
+The OLED pin marked SDA is its SPI data input and therefore
+connects to MOSI.
+
+The OLED and SD card share MOSI and SCK, but each has a separate
+chip-select pin. Software must keep the unused device's CS high.
+
+
+6. SSD1309 128x64 OLED
+------------------------------------------------------------
+
+OLED GND -> common GND
+OLED VCC -> 3.3 V
+OLED SCK -> PB7/SCK, physical pin 8
+OLED SDA -> PB5/MOSI, physical pin 6
+OLED RES -> PB1, physical pin 2
+OLED DC  -> PB0, physical pin 1
+OLED CS  -> PB3, physical pin 4
+
+No external OLED signal resistors are currently used.
+
+
+7. SD CARD MODULE
+------------------------------------------------------------
+
+SD GND  -> common GND
+SD 3V3  -> 3.3 V rail
+SD CLK  -> PB7/SCK, physical pin 8
+SD MISO -> PB6/MISO, physical pin 7
+SD MOSI -> PB5/MOSI, physical pin 6
+SD CS   -> PB4, physical pin 5
+
+Installed SD chip-select pull-up:
+
+    SD CS / PB4 -> 4.7 kOhm resistor -> 3.3 V
+
+This resistor keeps the SD card deselected while the ATmega32A
+is held in reset during USBasp programming. It helps prevent the
+SD card from driving MISO and causing verification failures.
+
+
+8. FOUR GAME BUTTONS AND PAUSE BUTTON
+------------------------------------------------------------
+
+Button A     -> PD0, physical pin 14 -> button -> GND
+Button X     -> PD1, physical pin 15 -> button -> GND
+Button Y     -> PD2, physical pin 16 -> button -> GND
+Button B     -> PD6, physical pin 20 -> button -> GND
+Pause Button -> PD3 / INT1, physical pin 17 -> button -> GND
+
+The software enables the ATmega32A internal pull-up for each pin:
+
+    released = logic HIGH
+    pressed  = logic LOW
+
+No external button resistors are needed.
+
+The Pause button uses hardware external interrupt INT1 on PD3,
+configured for a falling-edge trigger with software debounce to
+toggle game pause in the engine.
+
+For a four-legged tactile button, the two legs on one side are
+already connected internally. Use one leg from each opposite side.
+
+
+9. JOYSTICK MODULE
+------------------------------------------------------------
+
+Joystick +5V/VCC -> 3.3 V rail
+Joystick GND     -> common GND
+Joystick VRx     -> PA0/ADC0, physical pin 40
+Joystick VRy     -> PA1/ADC1, physical pin 39
+Joystick SW      -> PD4, physical pin 18
+
+Although the joystick module is labelled +5V, power it from 3.3 V
+so VRx and VRy cannot exceed the ATmega32A's 3.3 V ADC range.
+
+The joystick switch is active-low. The software enables PD4's
+internal pull-up, so no external SW resistor is required.
+
+
+10. MPU-6050 / GY-521
+------------------------------------------------------------
+
+MPU VCC -> 3.3 V rail
+MPU GND -> common GND
+MPU SCL -> PC0/SCL, physical pin 22
+MPU SDA -> PC1/SDA, physical pin 23
+MPU INT -> PB2/INT2, physical pin 3 (optional)
+MPU AD0 -> GND
+MPU XDA -> leave disconnected
+MPU XCL -> leave disconnected
+
+AD0 connected to GND selects I2C address 0x68.
+
+The tested GY-521 module contains I2C pull-up resistors, so no
+additional SDA or SCL resistors are currently used. MPU INT may
+remain disconnected when software polls the sensor.
+
+
+11. PASSIVE BUZZER
+------------------------------------------------------------
+
+Buzzer marked + terminal -> PD5/OC1A, physical pin 19
+Buzzer other terminal    -> common GND
+
+The tested buzzer is rated at approximately 10 mA, so it is driven
+directly from PD5 without a transistor or series resistor. Timer1
+generates the square wave; a constant HIGH does not create a
+continuous passive-buzzer tone.
+
+Do not use this direct connection for a different buzzer that draws
+more current. A higher-current magnetic buzzer needs a transistor
+driver and flyback diode.
+
+
+12. BOOTLOADER STATUS LED
+------------------------------------------------------------
+
+ATmega32A PA7, physical pin 33 -> 330 Ohm resistor -> LED anode
+LED cathode (short leg / flat side) -> common GND
+
+The LED is active-high and is normally off. The SD bootloader uses
+repeating blink groups to report a fatal error:
+
+    1 flash  -> SD initialization or FAT32 mount failed
+    2 flashes -> neither the requested image nor MENU.BIN was usable
+    3 flashes -> binary is empty or larger than the 28 KiB app area
+    4 flashes -> FAT/file read error
+    5 flashes -> application-flash verification failed
+
+PA7 was selected because it does not share the OLED/SD/USBasp SPI
+bus and is not one of the PORTC pins occupied by JTAG.
+
+
+13. UNUSED CONNECTIONS
+------------------------------------------------------------
+
+ATmega32A pin 12 (XTAL2) -> leave disconnected
+ATmega32A pin 13 (XTAL1) -> leave disconnected
+
+The MCU uses the internal 8 MHz oscillator.
+
+PD7, physical pin 21 -> currently unused
+PC2-PC7, pins 24-29  -> currently unused
+PA2-PA6, pins 34-38  -> currently unused
+
+
+14. COMPLETE ATMEGA32A PIN ALLOCATION
+------------------------------------------------------------
+
+Pin  1, PB0   -> OLED DC
+Pin  2, PB1   -> OLED RESET
+Pin  3, PB2   -> MPU-6050 INT (optional)
+Pin  4, PB3   -> OLED CS
+Pin  5, PB4   -> SD CS and 4.7 kOhm pull-up to 3.3 V
+Pin  6, PB5   -> shared SPI MOSI; OLED SDA; SD MOSI; USBasp MOSI
+Pin  7, PB6   -> shared SPI MISO; SD MISO; USBasp MISO
+Pin  8, PB7   -> shared SPI clock; OLED SCK; SD CLK; USBasp SCK
+Pin  9, RESET -> USBasp RESET; reset button; 12 kOhm to 3.3 V
+Pin 10, VCC   -> 3.3 V
+Pin 11, GND   -> GND
+Pin 12, XTAL2 -> disconnected
+Pin 13, XTAL1 -> disconnected
+Pin 14, PD0   -> game button A
+Pin 15, PD1   -> game button X
+Pin 16, PD2   -> game button Y
+Pin 17, PD3   -> pause button (INT1)
+Pin 18, PD4   -> joystick push switch
+Pin 19, PD5   -> passive buzzer
+Pin 20, PD6   -> game button B
+Pin 21, PD7   -> unused
+Pin 22, PC0   -> MPU-6050 SCL
+Pin 23, PC1   -> MPU-6050 SDA
+Pins 24-29   -> currently unused
+Pin 30, AVCC  -> 3.3 V
+Pin 31, GND   -> GND
+Pin 32, AREF  -> 100 nF ceramic capacitor -> GND
+Pin 33, PA7   -> bootloader status LED through 330 Ohm resistor
+Pins 34-38   -> currently unused
+Pin 39, PA1   -> joystick VRy
+Pin 40, PA0   -> joystick VRx
+
+
+15. IMPORTANT PROGRAMMING AND POWER NOTES
+------------------------------------------------------------
+
+1. The SD card, OLED, MPU-6050, joystick and ATmega32A all operate
+   from the same 3.3 V rail.
+
+2. Keep all grounds connected together.
+
+3. The SD CS 4.7 kOhm pull-up should remain installed during USBasp
+   programming because the SD card shares the ISP bus.
+
+4. If USBasp verification still fails, temporarily remove the SD
+   card. A badly behaved SD module may drive MISO even when CS is high.
+
+5. When using a separate external 3.3 V supply in the future,
+   disconnect USBasp VCC. Keep USBasp GND and the ISP signal wires
+   connected so both systems share a reference.
+
+6. Never connect two independently powered supply outputs directly
+   to the same 3.3 V rail.
+
+7. The current minimum capacitor arrangement is recorded above.
+   Adding the two recommended 100 nF MCU supply capacitors is the
+   single most useful reliability improvement before transferring
+   this design from breadboard to veroboard.
+
+8. The menu saves its selected .BIN filename in EEPROM bytes 0-12
+   and then performs a watchdog reset. The bootloader clears only
+   those 13 bytes after the selected application has been fully
+   programmed and verified. Other EEPROM locations are untouched.
+
+9. Because the filename is a one-shot mailbox, the next hardware or
+   software reset after playing a game loads MENU.BIN automatically.
